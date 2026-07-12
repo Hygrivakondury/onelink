@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Onelink admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --bg:#faf7fb; --ink:#241b2e; --accent:#a06ae0; --accent-dark:#8a4fd0; --line:#e9e2ee; --muted:#6d6478; --card:#fff; --red:#c0392b; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--ink); font-family:"Plus Jakarta Sans",sans-serif; padding:32px 20px; }
+  .wrap { max-width:560px; margin:0 auto; }
+  .login { max-width:360px; margin:80px auto 0; text-align:center; }
+  .login h1 { font-size:22px; margin-bottom:6px; }
+  input, textarea { width:100%; border:1px solid var(--line); border-radius:10px; padding:12px; font-size:15px; font-family:inherit; background:var(--card); }
+  input:focus, textarea:focus { outline:none; border-color:var(--accent); }
+  textarea { resize:vertical; min-height:64px; }
+  .login input { margin:16px 0 10px; }
+  button { background:var(--accent); color:#fff; border:none; border-radius:10px; padding:11px 16px; font-weight:600; cursor:pointer; font-family:inherit; font-size:14px; }
+  button:hover { background:var(--accent-dark); }
+  .login button { width:100%; }
+  .err { color:var(--red); font-size:13px; min-height:18px; }
+  .dash { display:none; }
+  h1 { font-size:22px; }
+  .section { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:22px; margin-bottom:18px; }
+  .section h2 { font-size:14px; font-weight:700; margin-bottom:14px; }
+  label { display:block; font-size:12px; font-weight:600; margin:10px 0 5px; color:var(--muted); }
+  label:first-child { margin-top:0; }
+  .link-row { display:flex; align-items:center; gap:10px; border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px; }
+  .link-row .info { flex:1; }
+  .link-row .lbl { font-weight:600; font-size:14px; }
+  .link-row .url { font-size:12px; color:var(--muted); word-break:break-all; }
+  .link-row .clicks { font-size:12px; color:var(--accent); font-weight:600; white-space:nowrap; }
+  .link-row .del { background:none; border:none; color:var(--red); cursor:pointer; font-size:12px; }
+  .add-row { display:flex; gap:8px; margin-top:6px; }
+  .add-row input { flex:1; }
+  .saved { color:var(--accent); font-size:13px; min-height:16px; margin-top:8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="login" id="login">
+    <h1>Onelink admin</h1>
+    <p style="color:var(--muted);font-size:14px">Enter your admin password.</p>
+    <input type="password" id="pw" placeholder="Admin password" />
+    <button id="loginBtn">Open editor</button>
+    <div class="err" id="loginErr"></div>
+  </div>
+
+  <div class="dash" id="dash">
+    <h1 style="margin-bottom:18px">Edit your page</h1>
+
+    <div class="section">
+      <h2>Profile</h2>
+      <label>Display name</label>
+      <input type="text" id="dName" placeholder="Your name" />
+      <label>Bio</label>
+      <textarea id="dBio" placeholder="A short line about you."></textarea>
+      <button id="saveProfile" style="margin-top:14px">Save profile</button>
+      <div class="saved" id="profileSaved"></div>
+    </div>
+
+    <div class="section">
+      <h2>Links</h2>
+      <div id="links"></div>
+      <div class="add-row">
+        <input type="text" id="newLabel" placeholder="Label (e.g. My website)" />
+        <input type="text" id="newUrl" placeholder="https://…" />
+        <button id="addLink">Add</button>
+      </div>
+      <div class="saved" id="linkErr" style="color:var(--red)"></div>
+    </div>
+
+    <p style="text-align:center"><a href="/" style="color:var(--accent);font-size:14px">View your public page →</a></p>
+  </div>
+</div>
+<script>
+  let token="";
+  document.getElementById("loginBtn").addEventListener("click", login);
+  document.getElementById("pw").addEventListener("keydown", e=>{ if(e.key==="Enter") login(); });
+  async function login() {
+    const pw=document.getElementById("pw").value, err=document.getElementById("loginErr"); err.textContent="";
+    try {
+      const res=await fetch("/api/admin/data",{headers:{Authorization:"Bearer "+pw}});
+      if(res.status===401){err.textContent="Wrong password.";return;}
+      token=pw; render(await res.json());
+      document.getElementById("login").style.display="none";
+      document.getElementById("dash").style.display="block";
+    } catch { err.textContent="Could not connect."; }
+  }
+  function esc(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+  function render(data) {
+    document.getElementById("dName").value = data.profile.display_name || "";
+    document.getElementById("dBio").value = data.profile.bio || "";
+    const box=document.getElementById("links");
+    box.innerHTML = data.links.length ? data.links.map(l=>`
+      <div class="link-row">
+        <div class="info"><div class="lbl">${esc(l.label)}</div><div class="url">${esc(l.url)}</div></div>
+        <div class="clicks">${l.clicks} clicks</div>
+        <button class="del" onclick="delLink(${l.id})">Remove</button>
+      </div>`).join("") : '<div style="color:var(--muted);font-size:13px;margin-bottom:8px">No links yet.</div>';
+  }
+  async function reload(){ const res=await fetch("/api/admin/data",{headers:{Authorization:"Bearer "+token}}); render(await res.json()); }
+  document.getElementById("saveProfile").addEventListener("click", async ()=>{
+    const display_name=document.getElementById("dName").value.trim();
+    const bio=document.getElementById("dBio").value.trim();
+    await fetch("/api/admin/profile",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({display_name,bio})});
+    const s=document.getElementById("profileSaved"); s.textContent="Saved ✓"; setTimeout(()=>s.textContent="",1500);
+  });
+  document.getElementById("addLink").addEventListener("click", async ()=>{
+    const label=document.getElementById("newLabel").value.trim();
+    const url=document.getElementById("newUrl").value.trim();
+    const err=document.getElementById("linkErr"); err.textContent="";
+    const res=await fetch("/api/admin/link",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({label,url})});
+    const data=await res.json();
+    if(!res.ok){ err.textContent=data.error||"Could not add link."; return; }
+    document.getElementById("newLabel").value=""; document.getElementById("newUrl").value=""; reload();
+  });
+  async function delLink(id){ if(!confirm("Remove this link?"))return; await fetch("/api/admin/link/delete",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({id})}); reload(); }
+  window.delLink=delLink;
+</script>
+</body>
+</html>

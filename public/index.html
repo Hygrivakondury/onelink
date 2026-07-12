@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Links</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --ink:#241b2e; --card:rgba(255,255,255,0.92); --line:rgba(120,90,140,0.16); --muted:#6d6478; --accent:#e8607a; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:"Plus Jakarta Sans",sans-serif; color:var(--ink); min-height:100vh; padding:48px 20px;
+    background: linear-gradient(160deg, #ffe3d3 0%, #ffd6e8 42%, #e4d4ff 100%);
+    display:flex; justify-content:center;
+  }
+  .wrap { width:100%; max-width:460px; }
+  .avatar { width:84px; height:84px; border-radius:50%; margin:0 auto 18px; background:linear-gradient(135deg,#e8607a,#a06ae0); display:flex; align-items:center; justify-content:center; color:#fff; font-size:34px; font-weight:700; box-shadow:0 8px 24px rgba(160,106,224,0.28); }
+  h1 { text-align:center; font-size:23px; font-weight:700; margin-bottom:6px; }
+  .bio { text-align:center; color:var(--muted); font-size:14px; line-height:1.5; margin-bottom:30px; padding:0 10px; }
+  a.link { display:block; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; text-align:center; text-decoration:none; color:var(--ink); font-weight:600; font-size:15px; margin-bottom:12px; transition:transform 0.12s, box-shadow 0.12s; backdrop-filter:blur(6px); }
+  a.link:hover { transform:translateY(-2px); box-shadow:0 8px 20px rgba(120,90,140,0.14); }
+  .empty { text-align:center; color:var(--muted); font-size:14px; padding:20px; }
+  .foot { text-align:center; margin-top:28px; font-size:12px; color:var(--muted); opacity:0.8; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="avatar" id="avatar">·</div>
+    <h1 id="name">Loading…</h1>
+    <div class="bio" id="bio"></div>
+    <div id="links"></div>
+    <div class="foot">Powered by Onelink</div>
+  </div>
+<script>
+  function esc(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+  fetch("/api/page").then(r=>r.json()).then(d=>{
+    const name = d.profile.display_name || "Your name";
+    document.getElementById("name").textContent = name;
+    document.title = name;
+    document.getElementById("avatar").textContent = (name.trim()[0] || "·").toUpperCase();
+    document.getElementById("bio").textContent = d.profile.bio || "";
+    const box = document.getElementById("links");
+    if (!d.links.length) { box.innerHTML = '<div class="empty">No links yet.</div>'; return; }
+    box.innerHTML = d.links.map(l => `<a class="link" href="/go/${l.id}">${esc(l.label)}</a>`).join("");
+  }).catch(()=>{ document.getElementById("name").textContent="Could not load page."; });
+</script>
+</body>
+</html>
